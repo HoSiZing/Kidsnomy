@@ -1,0 +1,57 @@
+services:
+  react-app:
+    image: kwon0528/b207-react-app:0.5.3
+    container_name: react-app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "5173:5173" # Vite 개발 서버 포트
+    volumes:
+      - /app/node_modules # 로컬 node_modules와 분리하여 충돌 방지
+      - /home/ubuntu/kidsnomy/certs:/etc/letsencrypt:ro # 인증서 및 키
+    depends_on:
+      - java-app
+    pull_policy: always
+
+  java-app:
+    image: kwon0528/b207-java-app:0.5.3
+    volumes:
+      # - ./Backend/kidsnomy:/app
+      - gradle-cache:/root/.gradle
+    working_dir: /app
+    # entrypoint: ["sh", "-c", "./gradlew bootJar --no-daemon -x test && java -jar build/libs/kidsnomy-0.0.1-SNAPSHOT.jar"]
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/kidsnomy?serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME} # .env 파일에서 읽어옴
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD} # .env 파일에서 읽어옴
+    pull_policy: always
+
+  fastapi-app:
+    image: kwon0528/b207-fastapi-app:0.5.11
+    ports:
+      - "8000:8000"
+    depends_on:
+      - java-app
+    pull_policy: always
+
+  mysql:
+    image: kwon0528/b207-mysql:0.5.3
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD} # .env 파일에서 읽어옴
+      MYSQL_DATABASE: kidsnomy
+      MYSQL_USER: ${MYSQL_USER} # .env 파일에서 읽어옴
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD} # .env 파일에서 읽어옴
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    pull_policy: always
+
+volumes:
+  mysql-data:
+  gradle-cache:
